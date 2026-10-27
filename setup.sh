@@ -5,7 +5,7 @@
 # Phases, each safe to re-run:
 #   1 install   Homebrew (if missing), git, node, python@3.12, Obsidian, the Claude desktop app, Tailscale
 #   2 keys      two SSH deploy keys + SSH config + GitHub host key; prints the public keys and copies them to the clipboard
-#   3 remote    Remote Login (SSH server) on this Mac + William's admin public key; opens Tailscale to sign in
+#   3 remote    William's admin public key staged; Remote Login stays OFF (opened per support session with support.sh); Tailscale
 #   4 clone     clones the vault William seeded, sets git name/email, installs hooks, pulls shared/, test commit
 # Wiki: projects/leadership-claude-rollout/11-mac-notes.md.
 set -e
@@ -56,14 +56,15 @@ $(cat ~/.ssh/NBX-shared.pub)
 fi
 
 if runs 3; then
-  say "Phase 3: remote support (Remote Login + Tailscale)"
+  say "Phase 3: remote support, consent per session (key staged; Remote Login stays OFF; Tailscale)"
   KEY="$(curl -fsSL "$REPO/admin_authorized_keys" | tr -d '\r')"
   [[ "$KEY" == ssh-ed25519* ]] || { echo "could not fetch William's admin public key"; exit 1; }
   mkdir -p ~/.ssh && touch ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys
   grep -qF "$KEY" ~/.ssh/authorized_keys || echo "$KEY" >> ~/.ssh/authorized_keys
-  echo "Turning on Remote Login (you will be asked for your Mac password):"
-  sudo systemsetup -setremotelogin on
-  echo "Remote Login is on for user $(whoami). Now open Tailscale (Applications) and sign in with your company Microsoft account; leave it running. Tell William the machine name shown in Tailscale."
+  echo "William's key is staged. Remote Login stays OFF until you open it for a support session:"
+  echo "  System Settings -> General -> Sharing -> Remote Login (on for the session, off after), or:"
+  echo "  bash <(curl -fsSL $REPO/support.sh) on      /      ... off"
+  echo "Now open Tailscale (Applications) and sign in with your company Microsoft account; leave it running. Tell William the machine name shown in Tailscale."
   open -a Tailscale 2>/dev/null || true
 fi
 

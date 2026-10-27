@@ -23,9 +23,14 @@ Already have some of this installed (the Claude app, Obsidian, Git)? Phase 1 lea
 |---|---|---|
 | 1 install | winget: Git, Node LTS, Python 3.12, Obsidian, Claude, Tailscale | Homebrew: git, node, python@3.12, Obsidian, Claude, Tailscale |
 | 2 keys | Two ed25519 keys in `~/.ssh` (`<Vault>` with write access on your vault repo, `NBX-shared` read-only on the shared repo), SSH config, GitHub host key; public keys to clipboard | Same |
-| 3 remote | Turns on the built-in OpenSSH Server, installs William's public key for your user, opens Tailscale to sign in | Turns on Remote Login, installs William's public key, opens Tailscale |
+| 3 remote | Installs the built-in OpenSSH Server but leaves it **off**, stages William's public key, opens Tailscale to sign in | Stages William's public key; Remote Login stays **off**; opens Tailscale |
 | 4 clone | Clones your vault over SSH, sets your git name and email, installs the backup hook, pulls the Company Shared folder, makes a test commit | Same |
 
-Remote support means William (and only William, with the one key listed here) can open a terminal on your machine over the company's Tailscale network to fix things or finish setups with you. You can see every connection in Tailscale and can turn Remote Login off at any time.
+Remote support is **consent per session**, like letting a help-desk person in. Nothing is open by default. When you want William to fix or finish something, you open the door for that session and close it after:
+
+- Windows: `irm https://raw.githubusercontent.com/Neurobiologix/vault-bootstrap/main/support.ps1 | iex` and answer `on`; later `off`.
+- Mac: `bash <(curl -fsSL https://raw.githubusercontent.com/Neurobiologix/vault-bootstrap/main/support.sh) on`; later `off`. (Same as System Settings → General → Sharing → Remote Login.)
+
+While the door is open, William, and only William, with the one key listed here, can open a terminal on your machine over the company's Tailscale network. Tailscale itself is just the private route between company machines; it carries nothing on its own and you can quit it any time.
 
 Source of truth for these files: William's CFO vault, `projects/leadership-claude-rollout/vault-bootstrap/`, published with `tools/publish-bootstrap.sh`.

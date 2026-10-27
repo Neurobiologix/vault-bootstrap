@@ -5,8 +5,8 @@
 #               already installed is left exactly as it is: --no-upgrade, no reinstall, sign-ins and settings untouched)
 #   2 keys      two SSH deploy keys (vault write key, NBX-shared read key), SSH config, GitHub host key; shows the
 #               public keys and copies them to the clipboard for a Teams message to William
-#   3 remote    OpenSSH Server on this PC + William's admin public key, so he can support this machine over SSH
-#               (Tailscale joins the company network; the leader signs in to Tailscale when it opens)
+#   3 remote    OpenSSH Server installed but left OFF, William's admin public key staged, Tailscale joins the company
+#               network. The leader opens the door per support session with support.ps1 (on/off); nothing is standing.
 #   4 clone     clones the vault William seeded, sets git name/email, installs hooks, pulls shared/, test commit
 # Nothing here reads company data. Wiki: projects/leadership-claude-rollout/08-setup-sheet.md.
 
@@ -60,14 +60,15 @@ if ($run -contains "2") {
 }
 
 if ($run -contains "3") {
-  Say "Phase 3: remote support (OpenSSH Server + Tailscale)"
+  Say "Phase 3: remote support, consent per session (OpenSSH Server installed but OFF; Tailscale)"
   $adminKey = (Invoke-RestMethod "$Repo/admin_authorized_keys").Trim()
   if ($adminKey -notmatch '^ssh-ed25519 ') { throw "could not fetch William's admin public key from the repo" }
   $user = $env:USERNAME
   $script = @"
 `$ErrorActionPreference = 'Stop'
 Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0 | Out-Null
-Set-Service sshd -StartupType Automatic; Start-Service sshd
+# OFF by default: the service is Manual and stopped. The leader starts it for a support session (support.ps1, 'on') and stops it after.
+Set-Service sshd -StartupType Manual; Stop-Service sshd -ErrorAction SilentlyContinue
 New-ItemProperty -Path 'HKLM:\SOFTWARE\OpenSSH' -Name DefaultShell -Value 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe' -PropertyType String -Force | Out-Null
 if (-not (Get-NetFirewallRule -Name 'OpenSSH-Server-In-TCP' -ErrorAction SilentlyContinue)) { New-NetFirewallRule -Name 'OpenSSH-Server-In-TCP' -DisplayName 'OpenSSH Server (sshd)' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22 | Out-Null }
 `$k = '$adminKey'
@@ -77,12 +78,12 @@ icacls `$adminFile /inheritance:r /grant 'Administrators:F' /grant 'SYSTEM:F' | 
 `$userDir = 'C:\Users\$user\.ssh'; New-Item -ItemType Directory -Force `$userDir | Out-Null
 `$userFile = Join-Path `$userDir 'authorized_keys'
 if (-not (Test-Path `$userFile) -or -not (Select-String -Path `$userFile -SimpleMatch -Pattern `$k -Quiet)) { Add-Content -Encoding ascii `$userFile `$k }
-Restart-Service sshd
-Write-Host 'OpenSSH Server is on; William''s key installed. Closing in 5 s'; Start-Sleep 5
+Write-Host 'OpenSSH Server installed and left OFF; William''s key staged. Closing in 5 s'; Start-Sleep 5
 "@
   Elevated $script
-  Write-Host "SSH server enabled for user $user on $env:COMPUTERNAME." -ForegroundColor Green
-  Write-Host "Now open Tailscale from the Start menu and sign in with your company Microsoft account when it asks; leave it running. Tell William the machine name shown in Tailscale."
+  Write-Host "Remote support is ready but OFF. To let William in for a session, run this and choose 'on'; run it again and choose 'off' when done:" -ForegroundColor Green
+  Write-Host "  irm $Repo/support.ps1 | iex"
+  Write-Host "Now open Tailscale from the Start menu, sign in with your company Microsoft account, and leave it running. Tell William the machine name it shows."
   Start-Process "tailscale" -ErrorAction SilentlyContinue
 }
 
