@@ -3,17 +3,18 @@
 # A leader runs ONE line in Terminal:
 #   bash <(curl -fsSL https://raw.githubusercontent.com/Neurobiologix/vault-bootstrap/main/setup.sh)
 # Phases, each safe to re-run:
-#   1 install   Homebrew (if missing), git, node, python@3.12, Obsidian, the Claude desktop app, Tailscale
+#   1 install   Homebrew (if missing), git, node, python@3.12, Obsidian, the Claude desktop app
 #   2 keys      two SSH deploy keys + SSH config + GitHub host key; prints the public keys and copies them to the clipboard
-#   3 remote    William's admin public key staged; Remote Login stays OFF (opened per support session with support.sh); Tailscale
+#   3 remote    William's admin public key staged; Remote Login stays OFF (opened per support session with support.sh); office network or VPN only
+#   5 fix       refreshes the vault's tools/ scripts from this repo, reinstalls the hook, pulls shared/, commits (run when William asks)
 #   4 clone     clones the vault William seeded, sets git name/email, installs hooks, pulls shared/, test commit
 # Wiki: projects/leadership-claude-rollout/11-mac-notes.md.
 set -e
 REPO="https://raw.githubusercontent.com/Neurobiologix/vault-bootstrap/main"
 say() { printf '\n\033[36m== %s\033[0m\n' "$1"; }
-echo "Neurobiologix vault bootstrap (macOS). Phases: 1 install, 2 keys, 3 remote, 4 clone."
-read -r -p "Which phase? (1/2/3/4, or 'all' for 1 then 2 then 3): " PHASE; PHASE="${PHASE:-all}"
-runs() { [ "$PHASE" = "$1" ] || { [ "$PHASE" = "all" ] && [ "$1" != "4" ]; }; }
+echo "Neurobiologix vault bootstrap (macOS). Phases: 1 install, 2 keys, 3 remote, 4 clone, 5 fix."
+read -r -p "Which phase? (1/2/3/4/5, or 'all' for 1 then 2 then 3): " PHASE; PHASE="${PHASE:-all}"
+runs() { [ "$PHASE" = "$1" ] || { [ "$PHASE" = "all" ] && [ "$1" != "4" ] && [ "$1" != "5" ]; }; }
 
 if runs 1; then
   say "Phase 1: Homebrew and software"
@@ -27,7 +28,6 @@ if runs 1; then
   cask_if_missing() { if [ -d "/Applications/$2.app" ]; then echo "$2 already installed, leaving it alone"; else brew install --cask "$1"; fi; }
   cask_if_missing obsidian Obsidian
   cask_if_missing claude Claude
-  cask_if_missing tailscale Tailscale
   echo "Installed. If 'git' is not found afterwards, close Terminal and open a new one."
 fi
 
@@ -56,7 +56,7 @@ $(cat ~/.ssh/NBX-shared.pub)
 fi
 
 if runs 3; then
-  say "Phase 3: remote support, consent per session (key staged; Remote Login stays OFF; Tailscale)"
+  say "Phase 3: remote support, consent per session (key staged; Remote Login stays OFF; office network or VPN only)"
   KEY="$(curl -fsSL "$REPO/admin_authorized_keys" | tr -d '\r')"
   [[ "$KEY" == ssh-ed25519* ]] || { echo "could not fetch William's admin public key"; exit 1; }
   mkdir -p ~/.ssh && touch ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys
@@ -64,8 +64,6 @@ if runs 3; then
   echo "William's key is staged. Remote Login stays OFF until you open it for a support session:"
   echo "  System Settings -> General -> Sharing -> Remote Login (on for the session, off after), or:"
   echo "  bash <(curl -fsSL $REPO/support.sh) on      /      ... off"
-  echo "Now open Tailscale (Applications) and sign in with your company Microsoft account; leave it running. Tell William the machine name shown in Tailscale."
-  open -a Tailscale 2>/dev/null || true
 fi
 
 if runs 4; then
@@ -82,4 +80,19 @@ if runs 4; then
   git commit --allow-empty -m "Setup test: hook, push and OneDrive backup"
   echo
   echo "Done. Expect 'backup: pushed to GitHub' above. Next: Obsidian -> Open folder as vault -> $DEST; then the Claude desktop app -> Code tab -> this folder."
+fi
+
+if runs 5; then
+  say "Phase 5: fix (refresh the vault's tools from the bootstrap repo)"
+  read -r -p "Vault name (e.g. ClaudeCPO): " VAULT
+  DEST="$HOME/$VAULT"; [ -d "$DEST/.git" ] || { echo "$DEST is not a vault (run phase 4 first)"; exit 1; }
+  cd "$DEST"
+  for f in backup-to-onedrive.sh install-hooks.sh refresh-shared.sh autocommit.sh new-deploy-key.sh shared-key.sh nbx-api.sh; do
+    curl -fsSL "$REPO/fixes/tools/$f" | tr -d '\r' > "tools/$f"
+  done
+  sh tools/install-hooks.sh
+  sh tools/refresh-shared.sh
+  git add tools
+  git commit -q -m "Tools refreshed from the vault bootstrap ($(date +%Y-%m-%d))"
+  echo "Done. Expect 'backup: pushed to GitHub' above."
 fi

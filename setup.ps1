@@ -1,12 +1,13 @@
 # Neurobiologix vault bootstrap for Windows (public repo Neurobiologix/vault-bootstrap; contains no secrets).
 # A leader runs ONE line in PowerShell:   irm https://raw.githubusercontent.com/Neurobiologix/vault-bootstrap/main/setup.ps1 | iex
 # It walks through four phases, each safe to re-run:
-#   1 install   Git, Node LTS, Python 3.12, Obsidian, the Claude desktop app, Tailscale (winget; elevates once; anything
+#   1 install   Git, Node LTS, Python 3.12, Obsidian, the Claude desktop app (winget; elevates once; anything
 #               already installed is left exactly as it is: --no-upgrade, no reinstall, sign-ins and settings untouched)
 #   2 keys      two SSH deploy keys (vault write key, NBX-shared read key), SSH config, GitHub host key; shows the
 #               public keys and copies them to the clipboard for a Teams message to William
-#   3 remote    OpenSSH Server installed but left OFF, William's admin public key staged, Tailscale joins the company
-#               network. The leader opens the door per support session with support.ps1 (on/off); nothing is standing.
+#   3 remote    OpenSSH Server installed but left OFF and William's admin public key staged, for support sessions on the
+#               office network or VPN only (no Tailscale). The leader opens the door per session with support.ps1 (on/off).
+#   5 fix       refreshes the vault's tools/ scripts from this repo, reinstalls the hook, pulls shared/, commits (run when William asks)
 #   4 clone     clones the vault William seeded, sets git name/email, installs hooks, pulls shared/, test commit
 # Nothing here reads company data. Wiki: projects/leadership-claude-rollout/08-setup-sheet.md.
 
@@ -23,14 +24,14 @@ function Elevated($script) {
   Remove-Item $tmp -ErrorAction SilentlyContinue
 }
 
-Write-Host "Neurobiologix vault bootstrap (Windows). Phases: 1 install, 2 keys, 3 remote, 4 clone." -ForegroundColor Green
-$phase = Read-Host "Which phase? (1/2/3/4, or 'all' for 1 then 2 then 3)"
+Write-Host "Neurobiologix vault bootstrap (Windows). Phases: 1 install, 2 keys, 3 remote, 4 clone, 5 fix." -ForegroundColor Green
+$phase = Read-Host "Which phase? (1/2/3/4/5, or 'all' for 1 then 2 then 3)"
 if (-not $phase) { $phase = "all" }
 $run = if ($phase -eq "all") { @("1","2","3") } else { @($phase) }
 
 if ($run -contains "1") {
   Say "Phase 1: installing software with winget (an admin prompt will appear once)"
-  $pk = @("Git.Git", "OpenJS.NodeJS.LTS", "Python.Python.3.12", "Obsidian.Obsidian", "Anthropic.Claude", "Tailscale.Tailscale")
+  $pk = @("Git.Git", "OpenJS.NodeJS.LTS", "Python.Python.3.12", "Obsidian.Obsidian", "Anthropic.Claude")
   $cmd = ($pk | ForEach-Object { "winget install --id $_ --exact --silent --no-upgrade --accept-package-agreements --accept-source-agreements; " }) -join ""
   Elevated "$cmd Write-Host 'installs finished; this window closes in 5 s'; Start-Sleep 5"
   Write-Host "Installed. CLOSE this PowerShell window and open a NEW one before phase 2 (PATH refresh), then run the same one-line command again and choose 2."
@@ -60,7 +61,7 @@ if ($run -contains "2") {
 }
 
 if ($run -contains "3") {
-  Say "Phase 3: remote support, consent per session (OpenSSH Server installed but OFF; Tailscale)"
+  Say "Phase 3: remote support, consent per session (OpenSSH Server installed but OFF; office network or VPN only)"
   $adminKey = (Invoke-RestMethod "$Repo/admin_authorized_keys").Trim()
   if ($adminKey -notmatch '^ssh-ed25519 ') { throw "could not fetch William's admin public key from the repo" }
   $user = $env:USERNAME
@@ -83,8 +84,6 @@ Write-Host 'OpenSSH Server installed and left OFF; William''s key staged. Closin
   Elevated $script
   Write-Host "Remote support is ready but OFF. To let William in for a session, run this and choose 'on'; run it again and choose 'off' when done:" -ForegroundColor Green
   Write-Host "  irm $Repo/support.ps1 | iex"
-  Write-Host "Now open Tailscale from the Start menu, sign in with your company Microsoft account, and leave it running. Tell William the machine name it shows."
-  Start-Process "tailscale" -ErrorAction SilentlyContinue
 }
 
 if ($run -contains "4") {
@@ -101,4 +100,22 @@ if ($run -contains "4") {
   & "$GitBin\sh.exe" tools/refresh-shared.sh
   git commit --allow-empty -m "Setup test: hook, push and OneDrive backup"
   Write-Host "`nDone. Expect 'backup: pushed to GitHub' above. Next: open Obsidian -> Open folder as vault -> $dest; then the Claude desktop app -> Code tab -> this folder." -ForegroundColor Green
+}
+
+if ($run -contains "5") {
+  Say "Phase 5: fix (refresh the vault's tools from the bootstrap repo)"
+  if (-not (Get-Command git -ErrorAction SilentlyContinue)) { throw "git not on PATH: open a new PowerShell window" }
+  $vault = Read-Host "Vault name (e.g. ClaudeSales)"
+  $dest = Join-Path $HOME $vault
+  if (-not (Test-Path "$dest\.git")) { throw "$dest is not a vault (run phase 4 first)" }
+  Set-Location $dest
+  foreach ($f in @("backup-to-onedrive.sh","install-hooks.sh","refresh-shared.sh","autocommit.sh","new-deploy-key.sh","shared-key.sh","nbx-api.sh")) {
+    $txt = (Invoke-RestMethod "$Repo/fixes/tools/$f") -replace "`r`n", "`n"
+    [IO.File]::WriteAllText("$dest\tools\$f", $txt, (New-Object Text.UTF8Encoding($false)))
+  }
+  & "$GitBin\sh.exe" tools/install-hooks.sh
+  & "$GitBin\sh.exe" tools/refresh-shared.sh
+  git add tools
+  git commit -q -m "Tools refreshed from the vault bootstrap ($(Get-Date -Format yyyy-MM-dd))"
+  Write-Host "Done. Expect 'backup: pushed to GitHub' above." -ForegroundColor Green
 }
