@@ -14,6 +14,9 @@
 $ErrorActionPreference = "Stop"
 $Repo = "https://raw.githubusercontent.com/Neurobiologix/vault-bootstrap/main"
 $GitBin = "C:\Program Files\Git\usr\bin"
+# sh.exe needs Git's usr\bin on PATH when launched from PowerShell, or dirname/chmod/mkdir are "command not found"
+# inside the vault scripts (seen on HEATHERM-LAPTOP, 2026-11-03).
+if (Test-Path $GitBin) { $env:PATH = "$GitBin;$env:PATH" }
 function Say($m) { Write-Host "`n== $m" -ForegroundColor Cyan }
 function IsAdmin { ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator) }
 function Elevated($script) {
