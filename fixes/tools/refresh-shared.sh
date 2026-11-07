@@ -6,6 +6,8 @@
 # see tools/shared-key.sh).
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO" || exit 0
+# Supervised contractor vaults (e.g. ClaudeIT) have no shared/ by design: stay silent.
+[ "$(cat .vault-profile 2>/dev/null | tr -d '[:space:]')" = "supervised" ] && exit 0
 if [ -d shared/.git ]; then
   if git -C shared pull -q --ff-only 2>/dev/null; then echo "shared: up to date ($(git -C shared log -1 --format=%cd --date=short))"
   else echo "shared: pull failed (network or deploy key; try: ssh -T git@github-shared)"; fi
