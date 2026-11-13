@@ -4,8 +4,9 @@
 # Called by .git/hooks/post-commit (installed by tools/install-hooks.sh); safe to run by hand.
 # Together the bundle and the zip are a complete restore: clone the bundle, unzip the rest on top.
 # Non-fatal by design: a missing OneDrive folder just skips the copy; a failed push is reported.
-# Supervised vaults (.vault-profile = "supervised", e.g. ClaudeIT) have a second writer (William's clone), so
-# before pushing they merge origin in (a conflict goes to a conflict/<machine>-<time> branch for William to merge).
+# Vaults with the handoff lane (a from-william/ folder: every leader vault after tools/handoff-lane.sh, and supervised
+# vaults such as ClaudeIT) have a second writer (William's clone), so before pushing they merge origin in
+# (a conflict goes to a conflict/<machine>-<time> branch for William to merge).
 [ -n "$VAULT_SYNCING" ] && exit 0
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 NAME="$(basename "$REPO")"
@@ -18,7 +19,7 @@ ODROOT="$HOME/OneDrive - NBX Wellness"; [ -d "$ODROOT" ] || { [ -d "$HOME/Librar
 DEST="${CLAUDE_VAULT_BACKUP_DIR:-$ODROOT/$NAME-backup}"
 cd "$REPO" || exit 0
 sh tools/refresh-shared.sh
-if git remote get-url origin >/dev/null 2>&1 && [ "$(cat .vault-profile 2>/dev/null | tr -d '[:space:]')" = "supervised" ]; then
+if git remote get-url origin >/dev/null 2>&1 && [ -d from-william ]; then
   BR="$(git rev-parse --abbrev-ref HEAD)"
   if ! VAULT_SYNCING=1 git pull -q --no-rebase --no-edit --autostash origin "$BR" >/dev/null 2>&1; then
     VAULT_SYNCING=1 git merge --abort >/dev/null 2>&1

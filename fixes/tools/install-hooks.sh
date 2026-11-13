@@ -14,6 +14,8 @@ sh "\$REPO/tools/backup-to-onedrive.sh"
 HK
 chmod +x "$HOOK" tools/*.sh
 echo "installed $HOOK"
+# The two-way handoff lane with William (from-william/, to-william/, SessionStart hook, _index section). Idempotent.
+[ -f tools/handoff-lane.sh ] && sh tools/handoff-lane.sh
 # OneDrive folder: Windows "OneDrive - NBX Wellness", Mac "~/Library/CloudStorage/OneDrive-NBXWellness".
 ODROOT="$HOME/OneDrive - NBX Wellness"; [ -d "$ODROOT" ] || { [ -d "$HOME/Library/CloudStorage/OneDrive-NBXWellness" ] && ODROOT="$HOME/Library/CloudStorage/OneDrive-NBXWellness"; }
 DEST="${CLAUDE_VAULT_BACKUP_DIR:-$ODROOT/$NAME-backup}"

@@ -87,12 +87,12 @@ if runs 5; then
   read -r -p "Vault name (e.g. ClaudeCPO): " VAULT
   DEST="$HOME/$VAULT"; [ -d "$DEST/.git" ] || { echo "$DEST is not a vault (run phase 4 first)"; exit 1; }
   cd "$DEST"
-  for f in backup-to-onedrive.sh install-hooks.sh refresh-shared.sh autocommit.sh new-deploy-key.sh shared-key.sh nbx-api.sh; do
+  for f in backup-to-onedrive.sh install-hooks.sh refresh-shared.sh autocommit.sh new-deploy-key.sh shared-key.sh nbx-api.sh session-start.sh handoff-lane.sh; do
     curl -fsSL "$REPO/fixes/tools/$f" | tr -d '\r' > "tools/$f"
   done
   sh tools/install-hooks.sh
   sh tools/refresh-shared.sh
-  git add tools
-  git commit -q -m "Tools refreshed from the vault bootstrap ($(date +%Y-%m-%d))"
+  git add tools from-william to-william .claude/settings.json _index.md 2>/dev/null; git add tools
+  git commit -q -m "Tools and handoff lane refreshed from the vault bootstrap ($(date +%Y-%m-%d))"
   echo "Done. Expect 'backup: pushed to GitHub' above."
 fi

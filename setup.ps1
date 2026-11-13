@@ -112,13 +112,14 @@ if ($run -contains "5") {
   $dest = Join-Path $HOME $vault
   if (-not (Test-Path "$dest\.git")) { throw "$dest is not a vault (run phase 4 first)" }
   Set-Location $dest
-  foreach ($f in @("backup-to-onedrive.sh","install-hooks.sh","refresh-shared.sh","autocommit.sh","new-deploy-key.sh","shared-key.sh","nbx-api.sh")) {
+  foreach ($f in @("backup-to-onedrive.sh","install-hooks.sh","refresh-shared.sh","autocommit.sh","new-deploy-key.sh","shared-key.sh","nbx-api.sh","session-start.sh","handoff-lane.sh")) {
     $txt = (Invoke-RestMethod "$Repo/fixes/tools/$f") -replace "`r`n", "`n"
     [IO.File]::WriteAllText("$dest\tools\$f", $txt, (New-Object Text.UTF8Encoding($false)))
   }
   & "$GitBin\sh.exe" tools/install-hooks.sh
   & "$GitBin\sh.exe" tools/refresh-shared.sh
+  git add tools from-william to-william .claude/settings.json _index.md
   git add tools
-  git commit -q -m "Tools refreshed from the vault bootstrap ($(Get-Date -Format yyyy-MM-dd))"
+  git commit -q -m "Tools and handoff lane refreshed from the vault bootstrap ($(Get-Date -Format yyyy-MM-dd))"
   Write-Host "Done. Expect 'backup: pushed to GitHub' above." -ForegroundColor Green
 }
